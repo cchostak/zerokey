@@ -46,7 +46,7 @@ Chosen option: **Option 3 (SPIRE / SPIFFE with `go-spiffe/v2` and Unix Domain So
 2. **SPIRE Server:** Runs as the central identity authority issuing SVIDs, maintaining SQLite datastore, and managing node attestation via join tokens.
 3. **SPIRE Agent:** Runs on the node, attesting itself to SPIRE Server via token, and attesting local containers via the `docker` workload attestor inspecting container labels (`docker:label:workload:*`).
 4. **Workload API Socket:** Exposed at `/run/spire/sockets/agent.sock` as a mounted volume. Workloads communicate over this socket using gRPC.
-5. **Client & Server Applications:** Written in Go 1.22 utilizing `go-spiffe/v2/workloadapi` and `go-spiffe/v2/spiffetls/tlsconfig`. Certificates and private keys are held strictly in memory and automatically rotated before expiry.
+5. **Client & Server Applications:** Written in Go 1.25 utilizing `go-spiffe/v2/workloadapi` and `go-spiffe/v2/spiffetls/tlsconfig`. Certificates and private keys are held strictly in memory and automatically rotated before expiry.
 6. **OIDC Discovery Provider:** `spire-oidc` deployed to serve standard OpenID Connect discovery (`/.well-known/openid-configuration`) and published JWKS (`/keys`) for federated multi-cloud authentication.
 
 ### Component Diagram:

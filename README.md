@@ -2,7 +2,7 @@
 
 [![CI Pipeline](https://github.com/cchostak/zerokey/actions/workflows/ci.yml/badge.svg)](https://github.com/cchostak/zerokey/actions/workflows/ci.yml)
 [![Security Audit](https://github.com/cchostak/zerokey/actions/workflows/security.yml/badge.svg)](https://github.com/cchostak/zerokey/actions/workflows/security.yml)
-[![Go Version](https://img.shields.io/badge/Go-1.22+-00ADD8?style=flat&logo=go)](https://golang.org)
+[![Go Version](https://img.shields.io/badge/Go-1.25+-00ADD8?style=flat&logo=go)](https://golang.org)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 [![Glossary](https://img.shields.io/badge/📖_Glossary-Plain_English-green.svg)](GLOSSARY.md)
 [![Backstage Catalog](https://img.shields.io/badge/Service_Catalog-Backstage-FF69B4.svg)](catalog-info.yaml)

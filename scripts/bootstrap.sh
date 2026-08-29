@@ -15,7 +15,8 @@ echo "=========================================================="
 echo "[1/4] Waiting for SPIRE Server to be healthy and ready..."
 MAX_RETRIES=30
 RETRY_COUNT=0
-# shellcheck disable=SC2086  -- SOCKET_ARG is an intentional multi-word argument
+# SOCKET_ARG is intentionally split into multiple arguments.
+# shellcheck disable=SC2086
 until docker compose exec -T spire-server /opt/spire/bin/spire-server healthcheck ${SOCKET_ARG} > /dev/null 2>&1 \
       || [ "${RETRY_COUNT}" -eq "${MAX_RETRIES}" ]; do
     RETRY_COUNT=$((RETRY_COUNT + 1))
