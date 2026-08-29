@@ -1,0 +1,269 @@
+services:
+  # ============================================================================
+  # 1. SPIRE Server (Core Identity Authority & CA)
+  # ============================================================================
+  spire-server:
+    image: ghcr.io/spiffe/spire-server:1.9.0
+    container_name: spire-server
+    hostname: spire-server
+    command: ["-config", "/opt/spire/conf/server/server.conf"]
+    volumes:
+      - ./conf/server.conf:/opt/spire/conf/server/server.conf:ro
+      - ./data/server:/opt/spire/data/server
+      - spire-server-sockets:/run/spire/server-sockets
+    ports:
+      - "8081:8081"
+    restart: unless-stopped
+    networks:
+      - spire-net
+
+  # ============================================================================
+  # 2. SPIRE OIDC Discovery Provider (Federation / JWKS / IdP Integration)
+  # ============================================================================
+  spire-oidc:
+    image: ghcr.io/spiffe/oidc-discovery-provider:1.9.0
+    container_name: spire-oidc
+    hostname: spire-oidc
+    command: ["-config", "/opt/spire/conf/oidc/oidc.conf"]
+    volumes:
+      - ./conf/oidc.conf:/opt/spire/conf/oidc/oidc.conf:ro
+      - spire-server-sockets:/run/spire/server-sockets:ro
+    ports:
+      - "${OIDC_HOST_PORT:-8088}:8080"
+    depends_on:
+      - spire-server
+    restart: unless-stopped
+    networks:
+      - spire-net
+
+  # ============================================================================
+  # 3. SPIRE Agent (Node Attestation & Workload API Provider)
+  # ============================================================================
+  spire-agent:
+    image: ghcr.io/spiffe/spire-agent:1.9.0
+    container_name: spire-agent
+    hostname: spire-agent
+    pid: "host"
+    command: ["-config", "/opt/spire/conf/agent/agent.conf", "-joinToken", "${JOIN_TOKEN}"]
+    volumes:
+      - ./conf/agent.conf:/opt/spire/conf/agent/agent.conf:ro
+      - ./data/agent:/opt/spire/data/agent
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - spire-sockets:/run/spire/sockets
+    depends_on:
+      - spire-server
+    restart: unless-stopped
+    networks:
+      - spire-net
+
+  # ============================================================================
+  # 4. Backend API Server Workload (mTLS Server with Dynamic X.509 SVID)
+  # ============================================================================
+  backend-api:
+    build:
+      context: ./app
+      dockerfile: Dockerfile.server
+    container_name: backend-api
+    hostname: backend-api
+    labels:
+      - "workload=backend-api"
+      - "app=backend-api"
+    environment:
+      - SPIFFE_ENDPOINT_SOCKET=unix:///run/spire/sockets/agent.sock
+      - PORT=8443
+      - ALLOWED_CLIENT_SPIFFE_ID=spiffe://demo.local/client-worker
+    volumes:
+      - spire-sockets:/run/spire/sockets:ro
+    ports:
+      - "${BACKEND_HOST_PORT:-8444}:8443"
+    depends_on:
+      - spire-agent
+    restart: unless-stopped
+    networks:
+      - spire-net
+
+  # ============================================================================
+  # 5. Client Worker Workload (mTLS Client with Dynamic X.509 SVID)
+  # ============================================================================
+  client-worker:
+    build:
+      context: ./app
+      dockerfile: Dockerfile.client
+    container_name: client-worker
+    hostname: client-worker
+    labels:
+      - "workload=client-worker"
+      - "app=client-worker"
+    environment:
+      - SPIFFE_ENDPOINT_SOCKET=unix:///run/spire/sockets/agent.sock
+      - SERVER_URL=https://backend-api:8443/api/secret-data
+      - EXPECTED_SERVER_SPIFFE_ID=spiffe://demo.local/backend-api
+    volumes:
+      - spire-sockets:/run/spire/sockets:ro
+    depends_on:
+      - backend-api
+    restart: unless-stopped
+    networks:
+      - spire-net
+
+  # ============================================================================
+  # 6. ZeroKey Control Plane API (FastAPI Gateway & SPIRE Orchestrator)
+  # ============================================================================
+  dashboard-api:
+    build:
+      context: ./dashboard/backend
+      dockerfile: Dockerfile
+    container_name: dashboard-api
+    hostname: dashboard-api
+    environment:
+      - ENVIRONMENT=production
+      - LOG_LEVEL=INFO
+      - TRUST_DOMAIN=demo.local
+      - SPIRE_SERVER_SOCKET=/run/spire/server-sockets/api.sock
+      - SPIRE_SERVER_CONTAINER=spire-server
+      - OIDC_INTERNAL_URL=http://spire-oidc:8080
+      - OIDC_EXTERNAL_URL=http://localhost:8088
+      - BACKEND_API_URL=https://backend-api:8443
+      - CLIENT_WORKER_CONTAINER=client-worker
+    volumes:
+      - spire-server-sockets:/run/spire/server-sockets:ro
+      - spire-sockets:/run/spire/sockets:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    ports:
+      - "${DASHBOARD_API_PORT:-8000}:8000"
+    depends_on:
+      - spire-server
+      - spire-oidc
+    restart: unless-stopped
+    networks:
+      - spire-net
+
+  # ============================================================================
+  # 7. ZeroKey Management Web Console (Next.js 15 UI)
+  # ============================================================================
+  dashboard-ui:
+    build:
+      context: ./dashboard/frontend
+      dockerfile: Dockerfile
+    container_name: dashboard-ui
+    hostname: dashboard-ui
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+      - NEXT_PUBLIC_WS_URL=ws://localhost:8000/ws/events
+    ports:
+      - "${DASHBOARD_UI_PORT:-3000}:3000"
+    depends_on:
+      - dashboard-api
+    restart: unless-stopped
+    networks:
+      - spire-net
+
+  # ============================================================================
+  # 8. Observability: OpenTelemetry Collector (Optional Profile: observability)
+  # ============================================================================
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.96.0
+    container_name: otel-collector
+    hostname: otel-collector
+    command: ["--config=/etc/otel-collector-config.yaml"]
+    volumes:
+      - ./conf/observability/otel-collector-config.yaml:/etc/otel-collector-config.yaml:ro
+    ports:
+      - "4317:4317" # OTLP gRPC
+      - "4318:4318" # OTLP HTTP
+      - "8889:8889" # Prometheus metrics exporter
+    profiles:
+      - observability
+    networks:
+      - spire-net
+
+  # ============================================================================
+  # 9. Observability: Prometheus (Metrics Store & Scraping)
+  # ============================================================================
+  prometheus:
+    image: prom/prometheus:v2.50.1
+    container_name: prometheus
+    hostname: prometheus
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --web.enable-lifecycle
+    volumes:
+      - ./conf/observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - "${PROMETHEUS_PORT:-9090}:9090"
+    profiles:
+      - observability
+    networks:
+      - spire-net
+
+  # ============================================================================
+  # 10. Observability: Grafana Loki (Log Aggregator)
+  # ============================================================================
+  loki:
+    image: grafana/loki:2.9.4
+    container_name: loki
+    hostname: loki
+    command: ["-config.file=/etc/loki/local-config.yaml"]
+    volumes:
+      - ./conf/observability/loki.yml:/etc/loki/local-config.yaml:ro
+    ports:
+      - "3100:3100"
+    profiles:
+      - observability
+    networks:
+      - spire-net
+
+  # ============================================================================
+  # 11. Observability: Promtail (Docker Container Log Collector)
+  # ============================================================================
+  promtail:
+    image: grafana/promtail:2.9.4
+    container_name: promtail
+    hostname: promtail
+    command: ["-config.file=/etc/promtail/config.yml"]
+    volumes:
+      - ./conf/observability/promtail.yml:/etc/promtail/config.yml:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+    depends_on:
+      - loki
+    profiles:
+      - observability
+    networks:
+      - spire-net
+
+  # ============================================================================
+  # 12. Observability: Grafana Dashboard
+  # ============================================================================
+  grafana:
+    image: grafana/grafana:10.3.3
+    container_name: grafana
+    hostname: grafana
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+    volumes:
+      - ./conf/observability/grafana/provisioning:/etc/grafana/provisioning:ro
+    ports:
+      - "${GRAFANA_PORT:-3001}:3000"
+    depends_on:
+      - loki
+      - prometheus
+    profiles:
+      - observability
+    networks:
+      - spire-net
+
+volumes:
+  spire-sockets:
+    name: zerokey-spire-sockets
+  spire-server-sockets:
+    name: zerokey-spire-server-sockets
+
+networks:
+  spire-net:
+    name: zerokey-spire-net
+    driver: bridge

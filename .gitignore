@@ -1,0 +1,39 @@
+# ==============================================================================
+# Git Ignore — ZeroKey SPIRE Keyless Identity Lab
+# ==============================================================================
+
+# Environment files
+.env
+!.env.example
+
+# Go build and test artifacts
+app/server
+app/client
+app/cmd/server/server
+app/cmd/client/client
+coverage.out
+coverage.html
+*.test
+*.prof
+
+# SPIRE dynamic runtime data & keys
+data/server/*
+!data/server/.gitkeep
+data/agent/*
+!data/agent/.gitkeep
+conf/token
+
+# Socket files
+*.sock
+*.sock.*
+
+# OS and IDE artifacts
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*~
+
+dashboard/frontend/node_modules
+dashboard/frontend/.next
+*.pyc

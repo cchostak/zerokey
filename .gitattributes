@@ -1,0 +1,23 @@
+# ==============================================================================
+# Git Attributes — Line ending normalization & language statistics configuration
+# ==============================================================================
+
+# Set default behavior to automatically normalize line endings
+* text=auto eol=lf
+
+# Explicitly declare text files you want to always be normalized and converted
+# to native line endings on checkout.
+*.go          text eol=lf diff=golang
+*.sh          text eol=lf eol=lf
+*.yml         text eol=lf
+*.yaml        text eol=lf
+*.json        text eol=lf
+*.md          text eol=lf
+*.conf        text eol=lf
+Makefile      text eol=lf
+
+# Exclude documentation and vendor files from repository language statistics
+docs/*        linguist-documentation
+*.md          linguist-documentation
+conf/*        linguist-detectable=true
+scripts/*     linguist-detectable=true

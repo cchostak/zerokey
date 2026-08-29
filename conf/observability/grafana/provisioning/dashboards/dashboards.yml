@@ -1,0 +1,11 @@
+apiVersion: 1
+
+providers:
+  - name: "ZeroKey Dashboards"
+    orgId: 1
+    folder: "ZeroKey Identity Plane"
+    type: file
+    disableDeletion: false
+    editable: true
+    options:
+      path: /etc/grafana/provisioning/dashboards

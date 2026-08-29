@@ -1,0 +1,46 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: zerokey
+  title: ZeroKey SPIRE / SPIFFE Keyless Workload Identity Platform
+  description: >-
+    Enterprise containerized workload identity platform demonstrating keyless
+    mutual TLS (mTLS), SPIFFE Verifiable Identity Documents (X.509 SVIDs),
+    node and container workload attestation, dynamic in-memory certificate rotation,
+    and federated OIDC/JWKS discovery via SPIRE.
+  tags:
+    - spiffe
+    - spire
+    - keyless-auth
+    - mtls
+    - workload-identity
+    - zero-trust
+    - security
+    - go
+    - docker-compose
+  annotations:
+    backstage.io/managed-by-location: url:https://github.com/cchostak/zerokey/blob/main/catalog-info.yaml
+    backstage.io/techdocs-ref: dir:.
+    github.com/project-slug: cchostak/zerokey
+  links:
+    - url: http://localhost:8088/.well-known/openid-configuration
+      title: SPIRE OIDC Discovery Configuration
+      icon: search
+    - url: http://localhost:8088/keys
+      title: SPIRE Published JWKS Keys
+      icon: key
+    - url: https://localhost:8444/api/health
+      title: Backend API mTLS Health Endpoint
+      icon: check
+spec:
+  type: service
+  lifecycle: production
+  owner: platform-engineering
+  system: identity-platform
+  providesApis:
+    - spiffe-workload-api
+    - spire-oidc-api
+    - keyless-mtls-api
+  dependsOn:
+    - resource:spire-server-ca
+    - resource:docker-socket-attestor

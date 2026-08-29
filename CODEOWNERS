@@ -1,0 +1,25 @@
+# ==============================================================================
+# Code Owners — ZeroKey SPIRE Keyless Identity Platform
+# https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+# ==============================================================================
+
+# Global fallback repository maintainers
+* @cchostak @platform-engineering-leads
+
+# SPIRE configuration, trust domain, and server/agent definitions
+/conf/ @cchostak @security-engineering-leads
+
+# Workload applications, SPIFFE SDK integrations, and Go microservices
+/app/ @cchostak @backend-leads
+
+# Bootstrap orchestration and lifecycle scripts
+/scripts/ @cchostak @platform-engineering-leads
+
+# CI/CD Workflows, Security Audits, and Dependabot
+/.github/ @cchostak @devops-leads
+
+# Architecture Decision Records (ADRs) and Platform Documentation
+/docs/ @cchostak @architecture-leads
+
+# Integration and unit test harnesses
+/tests/ @cchostak @qa-leads

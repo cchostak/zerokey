@@ -1,0 +1,32 @@
+global:
+  scrape_interval: 5s
+  evaluation_interval: 5s
+  external_labels:
+    monitor: 'zerokey-spiffe-observability'
+    trust_domain: 'demo.local'
+
+scrape_configs:
+  - job_name: 'dashboard-api'
+    scrape_interval: 5s
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['dashboard-api:8000']
+        labels:
+          app: 'zerokey-control-plane'
+          service: 'dashboard-api'
+          trust_domain: 'demo.local'
+
+  - job_name: 'otel-collector'
+    scrape_interval: 5s
+    static_configs:
+      - targets: ['otel-collector:8889']
+        labels:
+          app: 'zerokey-telemetry-pipeline'
+          service: 'otel-collector'
+
+  - job_name: 'prometheus'
+    scrape_interval: 10s
+    static_configs:
+      - targets: ['localhost:9090']
+        labels:
+          app: 'zerokey-metrics-store'
