@@ -98,8 +98,28 @@ fi
 
 # Ensure running workloads reload their freshly registered SVIDs
 echo "  - Synchronizing workload containers with Workload API..."
-docker compose restart backend-api client-worker > /dev/null 2>&1 || true
-sleep 1
+if ! docker compose restart backend-api client-worker > /dev/null 2>&1; then
+    echo "❌ Failed to restart workload containers."
+    exit 1
+fi
+
+echo "  - Waiting for backend API mTLS listener..."
+BACKEND_READY=false
+for ((attempt = 1; attempt <= MAX_RETRIES; attempt++)); do
+    if docker compose exec -T backend-api nc -z -w 1 127.0.0.1 8443 > /dev/null 2>&1; then
+        BACKEND_READY=true
+        break
+    fi
+    echo "  - Waiting for backend API... (${attempt}/${MAX_RETRIES})"
+    sleep 1
+done
+
+if [ "${BACKEND_READY}" != true ]; then
+    echo "❌ Backend API failed to become ready in time."
+    docker compose logs --tail 50 backend-api >&2 || true
+    exit 1
+fi
+echo "  ✓ Backend API is accepting mTLS connections."
 
 echo "[4/4] Current SPIRE State Overview:"
 echo ""
