@@ -5,7 +5,9 @@
 
 version: 2
 updates:
-  # Monitor GitHub Actions workflows
+  # --------------------------------------------------------------------------
+  # GitHub Actions — grouped weekly bump
+  # --------------------------------------------------------------------------
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
@@ -20,7 +22,30 @@ updates:
         patterns:
           - "*"
 
-  # Monitor Dockerfiles for base image updates
+  # --------------------------------------------------------------------------
+  # Go modules — app workload binaries (client-worker / backend-api)
+  # --------------------------------------------------------------------------
+  - package-ecosystem: "gomod"
+    directory: "/app"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+    commit-message:
+      prefix: "chore(deps)"
+    groups:
+      go-dependencies:
+        patterns:
+          - "*"
+    # Ignore patch bumps for indirect deps to reduce PR noise;
+    # security advisories will still surface via govulncheck.
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-patch"]
+
+  # --------------------------------------------------------------------------
+  # Docker base images — app workload Dockerfiles
+  # --------------------------------------------------------------------------
   - package-ecosystem: "docker"
     directory: "/app"
     schedule:
@@ -34,16 +59,58 @@ updates:
         patterns:
           - "*"
 
-  # Monitor Go dependencies for App Services
-  - package-ecosystem: "gomod"
-    directory: "/app"
+  # --------------------------------------------------------------------------
+  # Docker base images — dashboard backend (Python FastAPI)
+  # --------------------------------------------------------------------------
+  - package-ecosystem: "docker"
+    directory: "/dashboard/backend"
     schedule:
       interval: "weekly"
       day: "monday"
-      time: "06:00"
+      time: "05:30"
+    commit-message:
+      prefix: "chore(docker)"
+    groups:
+      docker-images:
+        patterns:
+          - "*"
+
+  # --------------------------------------------------------------------------
+  # pip — dashboard backend Python dependencies
+  # --------------------------------------------------------------------------
+  - package-ecosystem: "pip"
+    directory: "/dashboard/backend"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:30"
     commit-message:
       prefix: "chore(deps)"
     groups:
-      go-dependencies:
+      python-dependencies:
         patterns:
           - "*"
+    ignore:
+      # Patch bumps for Python deps are low risk; major/minor only
+      - dependency-name: "*"
+        update-types: ["version-update:semver-patch"]
+
+  # --------------------------------------------------------------------------
+  # npm — dashboard frontend (Next.js 15)
+  # --------------------------------------------------------------------------
+  - package-ecosystem: "npm"
+    directory: "/dashboard/frontend"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "07:00"
+    commit-message:
+      prefix: "chore(deps)"
+    groups:
+      npm-dependencies:
+        patterns:
+          - "*"
+    ignore:
+      # Only open PRs for minor/major npm bumps to avoid daily churn
+      - dependency-name: "*"
+        update-types: ["version-update:semver-patch"]
